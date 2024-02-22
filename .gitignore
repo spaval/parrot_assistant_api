@@ -161,3 +161,9 @@ cython_debug/
 
 .DS_Store
 .idea/
+
+assistant_api/venv/
+telegram_bot/venv/
+
+assistant_api/__pycache__/
+telegram_bot/__pycache__/

@@ -1,4 +1,4 @@
-from src.shared.ingestor.ingestor import Ingestor
+from utils.ingestor.ingestor import Ingestor
 from langchain_community.document_loaders import WebBaseLoader
 
 class URLIngestor(Ingestor):

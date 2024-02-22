@@ -1,7 +1,7 @@
 import chromadb
-from src.shared.store.store import Store
 import cloudpickle
 
+from utils.store.store import Store
 
 class ChromaStore(Store):
     def __init__(self, document_chunks, embeddings, path):

@@ -1,7 +1,8 @@
-from src.shared.store.store import Store
-from langchain_community.vectorstores import FAISS
 import os
 import shutil
+
+from utils.store.store import Store
+from langchain_community.vectorstores import FAISS
 
 class FaissStore(Store):
     def __init__(self, embeddings, path):
