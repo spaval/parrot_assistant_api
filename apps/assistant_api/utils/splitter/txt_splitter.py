@@ -1,4 +1,4 @@
-from src.shared.splitter.splitter import Splitter
+from utils.splitter.splitter import Splitter
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 
 class TxtSplitter(Splitter):

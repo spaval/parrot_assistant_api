@@ -1,5 +1,5 @@
+from utils.ingestor.ingestor import Ingestor
 from langchain_community.document_loaders import DirectoryLoader, PyPDFLoader
-from src.shared.ingestor.ingestor import Ingestor
 
 class PDFIngestor(Ingestor):
     def __init__(self, path = []):

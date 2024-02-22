@@ -1,18 +1,16 @@
+import os
+
 from pathlib import Path
 from fastapi import FastAPI
-
 from langchain_openai import OpenAIEmbeddings, ChatOpenAI
 from langchain_core.prompts import PromptTemplate
 from langchain.chains import RetrievalQAWithSourcesChain
 
-from src.shared.ingestor.url_ingestor import URLIngestor
-from src.shared.store.faiss_store import FaissStore
-from src.shared.ingestor.pdf_ingestor import PDFIngestor
-from src.shared.splitter.txt_splitter import TxtSplitter
+from utils.ingestor.pdf_ingestor import PDFIngestor
+from utils.splitter.txt_splitter import TxtSplitter
+from utils.store.faiss_store import FaissStore
 
-import os
-
-class Parrot:
+class AssistantApi:
     app = FastAPI()
 
     def __init__(self, name):
@@ -20,11 +18,9 @@ class Parrot:
 
     @app.post("/parrot/train")
     async def train():
-        ingestor = PDFIngestor(['assets/data'])
-        #ingestor = URLIngestor([
-        #    'https://docs.wized.com/',
-        #    'https://v1.wized.com/'
-        #])
+        ingestor = PDFIngestor([
+            Path(os.getenv('DATA_STORE_LOCATION'))
+        ])
         docs = ingestor.ingest()
 
         splitter = TxtSplitter(docs)
@@ -32,7 +28,7 @@ class Parrot:
         
         embeddings = OpenAIEmbeddings()
         
-        store = FaissStore(embeddings, Path(os.getenv('VECTOR_STORE_PATH')))
+        store = FaissStore(embeddings, Path(os.getenv('VECTOR_STORE_LOCATION')))
         index = store.save(chunks)
 
         result: bool
@@ -50,12 +46,12 @@ class Parrot:
             return None
         
         embeddings = OpenAIEmbeddings()
-        store = FaissStore(embeddings, Path(os.getenv('VECTOR_STORE_PATH')))
+        store = FaissStore(embeddings, Path(os.getenv('VECTOR_STORE_LOCATION')))
         vector_store = store.load()
 
         model = ChatOpenAI(
-            model_name="gpt-3.5-turbo",
-            temperature=0.5,
+            model_name=Path(os.getenv('MODEL_NAME')),
+            temperature=Path(os.getenv('TEMPERATURE')),
             streaming=True
         )
 
