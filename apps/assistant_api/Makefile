@@ -10,7 +10,7 @@ clean:
 	@rm -rf __pycache__
 
 venv: clean
-	@$(PYTHON) -m venv $(VIRTUALENV)
+	@python3 -m venv $(VIRTUALENV)
 	@chmod +x $(VIRTUALENV)/bin/activate
 	@. $(VIRTUALENV)/bin/activate
 	@$(PYTHON) -m pip install --upgrade pip

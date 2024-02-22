@@ -48,10 +48,10 @@ class AssistantApi:
         embeddings = OpenAIEmbeddings()
         store = FaissStore(embeddings, Path(os.getenv('VECTOR_STORE_LOCATION')))
         vector_store = store.load()
-
+        
         model = ChatOpenAI(
-            model_name=Path(os.getenv('MODEL_NAME')),
-            temperature=Path(os.getenv('TEMPERATURE')),
+            model_name=os.getenv('MODEL_NAME'),
+            temperature=os.getenv('TEMPERATURE'),
             streaming=True
         )
 
