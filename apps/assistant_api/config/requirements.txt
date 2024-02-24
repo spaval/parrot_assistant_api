@@ -10,3 +10,9 @@ tiktoken==0.6.0
 sentence-transformers==2.2.2
 unstructured==0.12.4
 python-magic==0.4.27
+google-api-python-client==2.119.0
+google-auth-httplib2==0.2.0
+google-auth-oauthlib==1.2.0
+PyPDF2==3.0.1
+pydantic[email]==2.6.1
+unstructured[pdf]==0.12.4

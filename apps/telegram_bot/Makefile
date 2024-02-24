@@ -18,16 +18,23 @@ venv: clean
 	@$(PIP) install --no-cache-dir -r config/requirements.txt
 
 setup: venv
-	@. $(VIRTUALENV)/bin/activate	
+	@. $(VIRTUALENV)/bin/activate
+
+dependencies:
+	@python3 -m pip install --upgrade pip
+	@pip3 install --no-cache-dir -r config/requirements.txt
 
 run:
 	@$(PYTHON) main.py
 
-build:
-	docker build -t bongga/parrot-telegram-bot:0.0.1 -f config/Dockerfile .
+lunch:
+	python3 main.py
 
-build-onrender:
-	docker build --platform=linux/amd64 -t bongga/parrot-telegram-bot:0.0.1 -f config/Dockerfile.onrender .
+build.dev:
+	docker build --platform=linux/amd64 --build-arg env_arg=dev -t bongga/parrot-telegram-bot:0.0.1.dev -f config/Dockerfile .
+
+build.pdn:
+	docker build --platform=linux/amd64 --build-arg env_arg=pdn -t bongga/parrot-telegram-bot:0.0.1 -f config/Dockerfile .
 
 docker:
 	docker run -itd --name parrot-telegram-bot-container bongga/parrot-telegram-bot:0.0.1
