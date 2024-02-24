@@ -1,4 +1,4 @@
-FROM python:3.11.7
+FROM --platform=linux/amd64 python:3.11.7
 
 # Establece el directorio de trabajo en /app
 WORKDIR /app
@@ -7,7 +7,10 @@ WORKDIR /app
 COPY . .
 
 # Instala todas las dependencias
-RUN make setup
+RUN make dependencies
+
+ARG env_arg=dev
+ENV env=$env_arg
 
 # Comando para ejecutar la aplicación
-CMD make run
+CMD make lunch

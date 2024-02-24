@@ -1,5 +1,7 @@
 # Byte-compiled / optimized / DLL files
 __pycache__/
+**/__pycache__/
+__pycache__
 *.py[cod]
 *$py.class
 
@@ -121,6 +123,8 @@ celerybeat.pid
 
 # Environments
 .env
+.env.dev
+.env.pdn
 .venv
 env/
 venv/
@@ -167,3 +171,10 @@ telegram_bot/venv/
 
 assistant_api/__pycache__/
 telegram_bot/__pycache__/
+
+apps/assistant_api/assets/data/
+apps/assistant_api/assets/messages/
+apps/assistant_api/assets/store/
+
+apps/assistant_api/*google_drive_credentials.json
+apps/assistant_api/*google_drive_token.json
