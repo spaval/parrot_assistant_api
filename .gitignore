@@ -176,5 +176,5 @@ apps/assistant_api/assets/data/
 apps/assistant_api/assets/messages/
 apps/assistant_api/assets/store/
 
-apps/assistant_api/*google_drive_credentials.json
-apps/assistant_api/*google_drive_token.json
+apps/assistant_api/config/*google_drive_credentials.json
+apps/assistant_api/config/*google_drive_token.json
