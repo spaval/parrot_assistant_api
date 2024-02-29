@@ -4,8 +4,9 @@ import logging
 
 from dotenv import load_dotenv
 from telegram import Update
-from telegram.constants import ParseMode
 from telegram.ext import filters, Application, CommandHandler, ContextTypes, MessageHandler
+
+DEFAULT_ERROR_MESSAGE = f'En este momento no puedo responderte, por favor inténtalo más tarde.'
 
 class TelegramBot:
     def __init__(self):
@@ -48,20 +49,18 @@ class TelegramBot:
         await update.message.reply_text(os.getenv('HELP_MESSAGE'))
 
     async def echo(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-        resp = self.query_assistant(update.message.text, update.message.chat.id)
-        if resp:
-            data = resp['data']
-            await update.message.reply_html(data['answer'])
+        answer = self.query_assistant(update.message.text, update.message.chat.id)
+        await update.message.reply_html(answer)
 
     def query_assistant(self, q: str, chat_id):
-        url = f"{os.getenv('PARROT_API_BASE_URL')}/{os.getenv('PARROT_API_QUERY_PATH')}?q={q}&id={chat_id}"
+        url = f"{os.getenv('PARROT_API_BASE_URL')}/{os.getenv('PARROT_API_QUERY_PATH')}?q={q}&id={chat_id}&source=telegram"
         response = requests.get(url)
-
-        if response.status_code != 200:
-            return {
-                "data": {
-                    "answer": response.text
-                }
-            }
+        answer = DEFAULT_ERROR_MESSAGE
         
-        return response.json()
+        if response.status_code == 200:
+            result = response.json()
+            if result and result['data']:
+                data = result['data']
+                answer = data['answer']
+
+        return answer

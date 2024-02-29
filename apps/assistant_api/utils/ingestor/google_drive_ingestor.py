@@ -4,7 +4,7 @@ from utils.ingestor.ingestor import Ingestor
 from langchain_community.document_loaders import GoogleDriveLoader, UnstructuredFileIOLoader
 
 class GoogleDriveIngestor(Ingestor):
-    def __init__(self, file_types: list[str] = os.getenv('SUPPORTED_FILE_TYPES').split(',')):
+    def __init__(self, file_types: list[str] = os.getenv('SUPPORTED_FILE_TYPES')):
         super().__init__('')
 
         self.file_types = file_types

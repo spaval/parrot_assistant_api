@@ -3,14 +3,15 @@ import logging
 import numpy as np
 
 from pathlib import Path
+from dotenv import load_dotenv
 from fastapi import FastAPI, BackgroundTasks
 from langchain_openai import OpenAIEmbeddings, ChatOpenAI
 from langchain_core.prompts import PromptTemplate
 from langchain.chains import ConversationalRetrievalChain
 from langchain.memory import ConversationSummaryBufferMemory
 from langchain_community.chat_message_histories import ChatMessageHistory
-from langchain.chains.conversational_retrieval.prompts import CONDENSE_QUESTION_PROMPT
 
+from utils.database.supabase_database import SupabaseDatabase
 from utils.notificator.email_notificator import EmailNotificator
 from dtos.training import Training
 from utils.splitter.txt_splitter import TxtSplitter
@@ -21,207 +22,181 @@ from utils.ingestor.google_drive_ingestor import GoogleDriveIngestor
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-class AssistantApi:
-    app = FastAPI()
+DEFAULT_MESSAGE_ERROR = 'No se pudo obtener una respuesta por parte del asistente'
 
-    def __init__(self, name):
-        self.name = name
+class AssistantApi(FastAPI):
+    def __init__(self, **extra: any):
+        super().__init__(**extra)
 
-    @app.post("/parrot/train")
-    async def train(data: Training, task: BackgroundTasks):
-        task.add_task(process_data_sources, data.email)
+        env = os.getenv('env') or 'dev'
+        path = f"config/.env.{env}"
+
+        load_dotenv(path)
+        self.db = self.create_data_base()
+
+        self.add_api_route("/parrot/train", self.train, methods=["POST"])
+        self.add_api_route("/parrot/query", self.query, methods=["GET"])
+
+    async def train(self, data: Training, task: BackgroundTasks):
+        task.add_task(self.process_data_sources, data.email)
             
         return {
             "error": None,
             "data": {
-                "message": "Se ha empezado el entrenamiento del asistente, una vez culminado se notificará vía correo electrónico."
+                "answer": "Se ha empezado el entrenamiento del asistente, una vez culminado se notificará vía correo electrónico."
             }
         }
-
-    @app.get("/parrot/query")
-    async def query(q, id, task: BackgroundTasks):
+    
+    async def query(self, q, id, source, task: BackgroundTasks):
         if q is None:
             return None
         
         chat_history = ChatMessageHistory()
         
-        chat_history = load_previous_chat_history(session_id=id)
-        vector_store = create_vector_store_index()
-        chain = create_conversational_chain(vector_store, chat_history)
-        response = generate_assistant_response(chain, q, chat_history, id, task)
-        
-        return {"data": response}
+        chat_history = self.load_previous_chat_history(session_id=id, chat_history=chat_history)
+        vector_store = self.create_vector_store_index()
+        chain = self.create_conversational_chain(vector_store, chat_history)
+        response = self.generate_assistant_response(chain, q, chat_history)
 
-def create_vector_store_index():
-    embeddings = OpenAIEmbeddings()
-    store = FaissStore(embeddings, Path(os.getenv('VECTOR_STORE_LOCATION')))
-    vector_store = store.load()
+        error: str = DEFAULT_MESSAGE_ERROR
+        answer: str = ''
 
-    return vector_store
+        if response:
+            error = None
+            answer = response.get('answer')
 
-def create_prompt_template():
-    template = f'''
-        Instrucciones:
+            data = {
+                "question": q,
+                "answer": answer,
+                "session_id": id,
+                "source": source, 
+            }
 
-        ¡Hola! Soy {os.getenv('BOT_NAME')}, tu asistente personal para la unidad residencial Origen P.H. Estoy aquí para ayudarte a 
-        conocer todo acerca de tu hogar y facilitarte información basada en el manual de convivencia de la unidad, 
-        la ley de propiedad horizontal, el código de policía, actas de asambleas y más. ¡Pregúntame lo que necesites!
+            task.add_task(self.db.save, 'history', data)
 
-        1. Manual de Convivencia:
-            * ¿Cuáles son las normas de convivencia establecidas en el manual de la unidad residencial?
-            * Explícame las restricciones y permisos para el uso de las áreas comunes.
-        2. Ley de Propiedad Horizontal:
-            * ¿Qué establece la ley de propiedad horizontal respecto a la administración y convivencia en conjuntos residenciales?
-            * ¿Cuáles son los derechos y deberes de los propietarios y residentes según esta ley?
-        3. Código de Policía:
-            * ¿Cuáles son las normativas del código de policía que aplican específicamente a la unidad residencial?
-            * ¿Qué sanciones se pueden aplicar por incumplir las normativas del código de policía en este contexto?
-        4. Actas de Asambleas:
-            * ¿Dónde puedo acceder a las actas de las últimas asambleas de la unidad residencial?
-            * Resúmeme los puntos más importantes tratados en la última asamblea.
-        5. Eventos y Actividades:
-            * ¿Hay eventos o actividades próximas en la unidad residencial? Cuéntame más sobre ellas.
-            * ¿Cómo puedo participar o contribuir a la organización de eventos comunitarios?
-        6. Mantenimiento y Reparaciones:
-            * ¿Cuál es el proceso para reportar problemas de mantenimiento en mi unidad o en áreas comunes?
-            * ¿Quién es el responsable de realizar las reparaciones y cómo puedo dar seguimiento a estos procesos?
-
-        Recuerda, estoy aquí para ayudarte y proporcionarte información precisa basada en las normativas y 
-        documentos mencionados. ¡No dudes en preguntarme cualquier cosa!
-
-        Notas:
-            * Responde respuestas concisas pero completas de fácil entendimiento para un humano.
-            * Responde siempre en español con un acento Colombiano.
-            * Apóyate en conversaciones previas del historial.
-
-        CONTEXTO:
-
-        {{context}}
-
-        PREGUNTA:
-
-        {{question}}
-
-        HISTORIAL:
-
-        {{chat_history}}
-    '''
-
-    prompt = PromptTemplate(
-        input_variables=["context", "chat_history", "question"],
-        template=template
-    )
-
-    return prompt
-
-def create_conversational_chain(vector_store, chat_history):
-    model = ChatOpenAI(
-        model_name=os.getenv('MODEL_NAME'),
-        temperature=os.getenv('TEMPERATURE'),
-        streaming=True,
-        max_tokens=512,
-    )
-
-    prompt = create_prompt_template()
-    memory = ConversationSummaryBufferMemory(
-        llm=model,
-        input_key='question',
-        output_key='answer',
-        memory_key="chat_history",
-        return_messages=True,
-        max_token_limit=512,
-        condense_question_prompt=CONDENSE_QUESTION_PROMPT,
-        chat_memory=chat_history,
-    )
-    
-    chain = ConversationalRetrievalChain.from_llm(
-        model,
-        chain_type="stuff",
-        retriever=vector_store.as_retriever(search_kwargs={'k': 3}),
-        combine_docs_chain_kwargs={"prompt": prompt},
-        memory=memory,
-        return_source_documents=True,
-        verbose=True,
-    )
-
-    return chain
-
-def generate_assistant_response(chain, prompt, chat_history, session_id, task: BackgroundTasks):
-    response = chain.invoke({"question": prompt})
-    answer = response.get('answer')
-
-    if response is not None:
-        chat_history.add_user_message(prompt)
-        chat_history.add_ai_message(answer)
-
-        task.add_task(save_assistant_conversations, session_id, chat_history)
-
-    return response
-
-def load_previous_chat_history(session_id: str):
-    folder = Path(os.getenv('MESSAGES_STORE_LOCATION'))
-    path = os.path.join(folder, f'{session_id}.npy')
-
-    chat_history = ChatMessageHistory()
-    messages = []
-
-    try:
-        if os.path.exists(path):
-            with open(path, "rb") as f:
-                messages = np.load(f, allow_pickle=True)
-    except Exception as e:
-        logger.error(f"[PARROT ERRR]: {e}")
-    finally:
-        if messages is not None:
-            for item in messages:
-                if item['type'] == 'human':
-                    chat_history.add_user_message(item['content'])
-                elif item['type'] == 'ai':
-                    chat_history.add_ai_message(item['content'])
-
-    return chat_history
-
-def save_assistant_conversations(session_id: str, chat_history):
-    folder = Path(os.getenv('MESSAGES_STORE_LOCATION'))
-    path = os.path.join(folder, f'{session_id}.npy')
-    limit = int(os.getenv('MAX_MESSAGE_LIMIT'))
-    
-    try:
-        conversation = chat_history.dict()
-        if conversation:
-            messages = conversation['messages']
-            messages = messages[-limit:]
+        return {
+                "error": error,
+                "data": {
+                    "answer": answer
+                }
+            }
             
-            if not(os.path.isdir(folder)):
-                os.mkdir(folder)
-
-            with open(path, "wb") as f:
-                np.save(f, messages, allow_pickle=True)
-    except Exception as e:
-        logger.error(f"[PARROT ERRR1]: {e}")
-
-def process_data_sources(email: str): 
-    notifier = EmailNotificator(receiver=email)
-
-    logger.info(f"[PARROT INFO]: **Training task started...**")
-
-    try:
-        ingestor = GoogleDriveIngestor()
-        docs = ingestor.ingest()
-
-        splitter = TxtSplitter(docs)
-        chunks = splitter.split(size=500, overlap=100)
-        
+    def create_vector_store_index(self):
         embeddings = OpenAIEmbeddings()
-        
         store = FaissStore(embeddings, Path(os.getenv('VECTOR_STORE_LOCATION')))
-        store.save(chunks)
+        vector_store = store.load()
 
-        message = "**Task Completed!**"
-        logger.info(f"[PARROT INFO]: {message}")
+        return vector_store
 
-        notifier.notify(text=message)
-    except Exception as e:
-        logger.error(f"[PARROT ERRR]: {e}")
+    def create_prompt_template(self):
+        template = f'''
+            Eres el bot {os.getenv('BOT_NAME')}.
+            Fuiste creado para interactuar en conversaciones con humanos.
+            Responde las preguntas que recibas basándote sólamente en el conocimiento que tienes.
+            Si no sabes la respuesta, di que no cuentas con la información para dar respuesta a la pregunta.
+            No trates de inventar una respuesta.
+            Responde siempre en español con un tono amigable y acento colombiano.
+            No muestres la palabra Assistant, Human, Pregunta, Respuesta en la respuesta, sólo la respuesta del asistente de forma puntual.
+            Apóyate en el historial del chat para alimentar el contexto y dar respuesta a las preguntas que se te hagan.
+
+            {{context}}
+            {{chat_history}}
+
+            {{question}}
+        '''
+
+        prompt = PromptTemplate(
+            input_variables=["context", "chat_history", "question"],
+            template=template
+        )
+
+        return prompt
+
+    def create_conversational_chain(self, vector_store, chat_history):
+        model = ChatOpenAI(
+            model_name=os.getenv('MODEL_NAME'),
+            temperature=os.getenv('TEMPERATURE'),
+            streaming=True,
+            max_tokens=512,
+        )
+
+        prompt = self.create_prompt_template()
+        memory = ConversationSummaryBufferMemory(
+            llm=model,
+            input_key='question',
+            output_key='answer',
+            memory_key="chat_history",
+            return_messages=True,
+            max_token_limit=512,
+            chat_memory=chat_history,
+        )
         
-        notifier.notify(text=e)
+        chain = ConversationalRetrievalChain.from_llm(
+            model,
+            chain_type="stuff",
+            retriever=vector_store.as_retriever(search_kwargs={'k': 3}),
+            combine_docs_chain_kwargs={"prompt": prompt},
+            memory=memory,
+            return_source_documents=True,
+            verbose=False,
+        )
+
+        return chain
+
+    def generate_assistant_response(self, chain, prompt, chat_history):
+        response = chain.invoke({"question": prompt, "chat_history": chat_history})
+        return response
+
+    def load_previous_chat_history(self, session_id, chat_history):
+        try:
+            messages =self.db.get(
+                table='history',
+                filters={'session_id': session_id},
+                columns='session_id, question, answer',
+                order_by='created_at',
+                limit=6,
+            )
+
+            if messages.data:
+                for item in messages.data:
+                    chat_history.add_user_message(item.get('question'))
+                    chat_history.add_ai_message(item.get('answer'))
+
+        except Exception as e:
+            pass
+        
+        return chat_history
+
+    def process_data_sources(self, email: str): 
+        notifier = EmailNotificator(receiver=email)
+
+        logger.info(f"[PARROT INFO]: **Training task started...**")
+
+        try:
+            ingestor = GoogleDriveIngestor()
+            docs = ingestor.ingest()
+
+            splitter = TxtSplitter(docs)
+            chunks = splitter.split(size=500, overlap=100)
+            
+            embeddings = OpenAIEmbeddings()
+            
+            store = FaissStore(embeddings, Path(os.getenv('VECTOR_STORE_LOCATION')))
+            store.save(chunks)
+
+            message = "**Task Completed!**"
+            logger.info(f"[PARROT INFO]: {message}")
+
+            notifier.notify(text=message)
+        except Exception as e:
+            logger.error(f"[PARROT ERRR]: {e}")
+            
+            notifier.notify(text=e)
+
+    def create_data_base(self):
+        url = os.getenv('SUPABASE_URL')
+        key = os.getenv('SUPABASE_KEY')
+
+        db = SupabaseDatabase(url=url, key=key)
+
+        return db

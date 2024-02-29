@@ -1,10 +1,16 @@
-FROM --platform=linux/amd64 python:3.11.7
+FROM --platform=linux/amd64 python:3.11.7-slim-bullseye
 
 # Establece el directorio de trabajo en /app
 WORKDIR /app
 
 # Copia el contenido actual al directorio de trabajo
 COPY . .
+
+# Install make
+RUN apt update && apt install -y --no-install-recommends \
+    make \
+    libgl1 \
+    libglib2.0-0
 
 # Expone el puerto 5000 (puedes cambiarlo según las necesidades de tu aplicación)
 EXPOSE 8000

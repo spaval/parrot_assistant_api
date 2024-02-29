@@ -24,16 +24,19 @@ dependencies:
 	@pip3 install --no-cache-dir -r config/requirements.txt
 
 run:
-	$(PYTHON) -m uvicorn main:AssistantApi.app --host 0.0.0.0 --port 8000 --reload --loop asyncio --env-file config/.env.dev
+	$(PYTHON) main.py
+
+run.pdn:
+	$(PYTHON) -m uvicorn main:AssistantApi.app --host 0.0.0.0 --port 8000 --reload --loop asyncio --env-file config/.env.pdn
 
 lunch:
-	python3 -m uvicorn main:AssistantApi.app --host 0.0.0.0 --port 8000 --reload --loop asyncio --env-file config/.env.pdn
+	python3 main.py
 
 build.dev:
 	docker build --platform=linux/amd64 --build-arg env_arg=dev -t bongga/parrot-assistant-api:0.0.1.dev -f config/Dockerfile .
 
 build.pdn:
-	docker build --platform=linux/amd64 --build-arg env_arg=pdn -t bongga/parrot-assistant-api:0.0.1 -f config/Dockerfile .
+	docker build --build-arg env_arg=pdn -t bongga/parrot-assistant-api:0.0.1 -f config/Dockerfile .
 
 docker:
 	docker run -itd --name parrot-assistant-api-container -p 8000:8000 bongga/parrot-assistant-api:0.0.1
