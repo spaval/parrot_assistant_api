@@ -13,6 +13,8 @@ class FaissStore(Store):
         
         if os.path.exists(self.path):
             shutil.rmtree(self.path)
+        else:
+            os.makedirs(self.path)
 
         vector_index.save_local(self.path)
 

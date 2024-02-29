@@ -1,5 +1,7 @@
 import chromadb
 import cloudpickle
+import os
+import shutil
 
 from utils.store.store import Store
 
@@ -9,6 +11,11 @@ class ChromaStore(Store):
 
     def save(self):
         vector_index = chromadb.from_documents(documents=self.document_chunks, embedding=self.embeddings)
+
+        if os.path.exists(self.path):
+            shutil.rmtree(self.path)
+        else:
+            os.makedirs(self.path)
 
         with open(self.path, "wb") as f:
             cloudpickle.dump(vector_index, f)
