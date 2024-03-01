@@ -11,15 +11,12 @@ class ShopifyIngestor(Ingestor):
     def ingest(self):
         if self.config is None:
             return None
-        
-        last_state = loader.last_state
 
         loader = AirbyteShopifyLoader(
             config=self.config,
             stream_name=self.stream_name,
-            state=last_state,
         )
-
+        
         docs = loader.load()
 
         return docs

@@ -1,6 +1,5 @@
 import os
 import logging
-import numpy as np
 
 from pathlib import Path
 from dotenv import load_dotenv
@@ -12,7 +11,6 @@ from langchain.memory import ConversationSummaryBufferMemory
 from langchain_community.chat_message_histories import ChatMessageHistory
 
 from utils.database.supabase_database import SupabaseDatabase
-from utils.notificator.email_notificator import EmailNotificator
 from dtos.training import Training
 from utils.splitter.txt_splitter import TxtSplitter
 from utils.store.faiss_store import FaissStore
@@ -168,8 +166,6 @@ class AssistantApi(FastAPI):
         return chat_history
 
     def process_data_sources(self, email: str): 
-        notifier = EmailNotificator(receiver=email)
-
         logger.info(f"[PARROT INFO]: **Training task started...**")
 
         try:
@@ -187,11 +183,8 @@ class AssistantApi(FastAPI):
             message = "**Task Completed!**"
             logger.info(f"[PARROT INFO]: {message}")
 
-            notifier.notify(text=message)
         except Exception as e:
             logger.error(f"[PARROT ERRR]: {e}")
-            
-            notifier.notify(text=e)
 
     def create_data_base(self):
         url = os.getenv('SUPABASE_URL')
