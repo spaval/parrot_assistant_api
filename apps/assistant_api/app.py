@@ -52,8 +52,8 @@ class AssistantApi(FastAPI):
             return None
         
         chat_history = ChatMessageHistory()
-        
         chat_history = self.load_previous_chat_history(session_id=id, chat_history=chat_history)
+        
         vector_store = self.create_vector_store_index()
         chain = self.create_conversational_chain(vector_store, chat_history)
         response = self.generate_assistant_response(chain, q, chat_history)
@@ -72,14 +72,14 @@ class AssistantApi(FastAPI):
                 "source": source, 
             }
 
-            task.add_task(self.db.save, 'history', data)
+            task.add_task(self.db.save, os.getenv('CHATS_DATABASE_NAME'), data)
 
         return {
-                "error": error,
-                "data": {
-                    "answer": answer
-                }
+            "error": error,
+            "data": {
+                "answer": answer
             }
+        }
             
     def create_vector_store_index(self):
         embeddings = OpenAIEmbeddings()
@@ -150,7 +150,7 @@ class AssistantApi(FastAPI):
     def load_previous_chat_history(self, session_id, chat_history):
         try:
             messages =self.db.get(
-                table='history',
+                table=os.getenv('CHATS_DATABASE_NAME'),
                 filters={'session_id': session_id},
                 columns='session_id, question, answer',
                 order_by='created_at',
