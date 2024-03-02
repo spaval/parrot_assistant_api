@@ -17,7 +17,6 @@ class GoogleDriveIngestor(Ingestor):
             folder_id=os.getenv('GOOGLE_DRIVE_FOLDER_ID'),
             credentials_path=self.credentials,
             token_path=os.getenv('GOOGLE_DRIVE_TOKEN_PATH'),
-            #file_types=self.file_types,
             recursive=True,
             file_loader_cls=UnstructuredFileIOLoader,
             file_loader_kwargs={"mode": "elements"}

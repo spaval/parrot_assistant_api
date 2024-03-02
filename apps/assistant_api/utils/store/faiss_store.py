@@ -5,7 +5,7 @@ from utils.store.store import Store
 from langchain_community.vectorstores import FAISS
 
 class FaissStore(Store):
-    def __init__(self, embeddings, path):
+    def __init__(self, embeddings, path=os.getenv('VECTOR_STORE_LOCATION')):
         super().__init__(embeddings, path)
 
     def save(self, document_chunks):

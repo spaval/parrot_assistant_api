@@ -81,7 +81,7 @@ class AssistantApi(FastAPI):
             
     def create_vector_store_index(self):
         embeddings = OpenAIEmbeddings()
-        store = FaissStore(embeddings, Path(os.getenv('VECTOR_STORE_LOCATION')))
+        store = FaissStore(embeddings)
         vector_store = store.load()
 
         return vector_store
@@ -171,13 +171,13 @@ class AssistantApi(FastAPI):
         try:
             ingestor = GoogleDriveIngestor()
             docs = ingestor.ingest()
-
+            
             splitter = TxtSplitter(docs)
             chunks = splitter.split(size=500, overlap=100)
             
             embeddings = OpenAIEmbeddings()
             
-            store = FaissStore(embeddings, Path(os.getenv('VECTOR_STORE_LOCATION')))
+            store = FaissStore(embeddings)
             store.save(chunks)
 
             message = "**Task Completed!**"
@@ -187,9 +187,5 @@ class AssistantApi(FastAPI):
             logger.error(f"[PARROT ERRR]: {e}")
 
     def create_data_base(self):
-        url = os.getenv('SUPABASE_URL')
-        key = os.getenv('SUPABASE_KEY')
-
-        db = SupabaseDatabase(url=url, key=key)
-
+        db = SupabaseDatabase()
         return db

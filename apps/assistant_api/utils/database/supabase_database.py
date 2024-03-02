@@ -1,10 +1,11 @@
+import os
+
 from utils.database.database import Database
 from supabase import create_client, Client
 
 class SupabaseDatabase(Database):
-    def __init__(self, url, key):
+    def __init__(self, url=os.getenv('SUPABASE_URL'), key=os.getenv('SUPABASE_KEY')):
         super().__init__()
-
         self.client: Client = create_client(url, key)
 
     def connect(self):
