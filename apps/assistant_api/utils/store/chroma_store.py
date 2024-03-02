@@ -6,7 +6,7 @@ import shutil
 from utils.store.store import Store
 
 class ChromaStore(Store):
-    def __init__(self, document_chunks, embeddings, path):
+    def __init__(self, document_chunks, embeddings=None, path=os.getenv('VECTOR_STORE_LOCATION')):
         super().__init__(document_chunks, embeddings, path)
 
     def save(self):

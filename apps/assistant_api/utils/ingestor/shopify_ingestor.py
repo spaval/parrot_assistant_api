@@ -19,4 +19,18 @@ class ShopifyIngestor(Ingestor):
         
         docs = loader.load()
 
+        if docs:
+            for doc in docs:
+                doc.page_content = get_title(doc)
+
         return docs
+    
+def get_title(doc):
+    title: str = ''
+    variants = doc.metadata['variants']
+
+    if variants:
+        extra = variants[0]
+        title = f"Product: {doc.metadata['title']} - Price: {extra['price']} - ProductId: {extra['product_id']} - Size: {extra['weight']}{extra['weight_unit']}"
+
+    return title
