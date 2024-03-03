@@ -5,10 +5,11 @@ from pathlib import Path
 from dotenv import load_dotenv
 from fastapi import FastAPI, BackgroundTasks
 from langchain_openai import OpenAIEmbeddings, ChatOpenAI
-from langchain_core.prompts import PromptTemplate
-from langchain.chains import ConversationalRetrievalChain
-from langchain.memory import ConversationSummaryBufferMemory
+from langchain_core.prompts import ChatPromptTemplate
+from langchain.chains import create_retrieval_chain
 from langchain_community.chat_message_histories import ChatMessageHistory
+from langchain.chains.combine_documents import create_stuff_documents_chain
+from utils.ingestor.shopify_ingestor import ShopifyIngestor
 
 from utils.database.supabase_database import SupabaseDatabase
 from dtos.training import Training
@@ -51,9 +52,8 @@ class AssistantApi(FastAPI):
         
         chat_history = ChatMessageHistory()
         chat_history = self.load_previous_chat_history(session_id=id, chat_history=chat_history)
-        
         vector_store = self.create_vector_store_index()
-        chain = self.create_conversational_chain(vector_store, chat_history)
+        chain = self.create_conversational_chain(vector_store)
         response = self.generate_assistant_response(chain, q, chat_history)
 
         error: str = DEFAULT_MESSAGE_ERROR
@@ -94,23 +94,23 @@ class AssistantApi(FastAPI):
             Si no sabes la respuesta, di que no cuentas con la información para dar respuesta a la pregunta.
             No trates de inventar una respuesta.
             Responde siempre en español con un tono amigable y acento colombiano.
-            No muestres la palabra Assistant, Human, Pregunta, Respuesta en la respuesta, sólo la respuesta del asistente de forma puntual.
-            Apóyate en el historial del chat para alimentar el contexto y dar respuesta a las preguntas que se te hagan.
-
+            No muestres la palabra Assistant, Human, Pregunta, Respuesta o AI en la respuesta, sólo la respuesta del asistente de forma puntual.
+            
+            <context>
             {{context}}
             {{chat_history}}
+            </context>
 
-            {{question}}
+            Question: {{input}}
         '''
 
-        prompt = PromptTemplate(
-            input_variables=["context", "chat_history", "question"],
-            template=template
+        prompt = ChatPromptTemplate.from_template(
+            template
         )
 
         return prompt
 
-    def create_conversational_chain(self, vector_store, chat_history):
+    def create_conversational_chain(self, vector_store):
         model = ChatOpenAI(
             model_name=os.getenv('MODEL_NAME'),
             temperature=os.getenv('TEMPERATURE'),
@@ -119,30 +119,17 @@ class AssistantApi(FastAPI):
         )
 
         prompt = self.create_prompt_template()
-        memory = ConversationSummaryBufferMemory(
-            llm=model,
-            input_key='question',
-            output_key='answer',
-            memory_key="chat_history",
-            return_messages=True,
-            max_token_limit=512,
-            chat_memory=chat_history,
-        )
-        
-        chain = ConversationalRetrievalChain.from_llm(
-            model,
-            chain_type="stuff",
-            retriever=vector_store.as_retriever(search_kwargs={'k': 3}),
-            combine_docs_chain_kwargs={"prompt": prompt},
-            memory=memory,
-            return_source_documents=True,
-            verbose=False,
+        document_chain = create_stuff_documents_chain(model, prompt)
+
+        retrieval_chain = create_retrieval_chain(
+            vector_store.as_retriever(search_kwargs={'k': 3}),
+            document_chain,
         )
 
-        return chain
+        return retrieval_chain
 
     def generate_assistant_response(self, chain, prompt, chat_history):
-        response = chain.invoke({"question": prompt, "chat_history": chat_history})
+        response = chain.invoke({"input": prompt, "chat_history": chat_history})
         return response
 
     def load_previous_chat_history(self, session_id, chat_history):
@@ -152,7 +139,7 @@ class AssistantApi(FastAPI):
                 filters={'session_id': session_id},
                 columns='session_id, question, answer',
                 order_by='created_at',
-                limit=6,
+                limit=os.getenv('MAX_MESSAGE_LIMIT'),
             )
 
             if messages.data:
@@ -165,11 +152,24 @@ class AssistantApi(FastAPI):
         
         return chat_history
 
+    def create_data_base(self):
+        db = SupabaseDatabase()
+        return db
+    
     def process_data_sources(self, email: str): 
         logger.info(f"[PARROT INFO]: **Training task started...**")
 
         try:
-            ingestor = GoogleDriveIngestor()
+            config = {
+                "start_date": os.getenv('SHOPIFY_START_DATE'),
+                "shop": os.getenv('SHOPIFY_STORE'),
+                "credentials": {
+                    "auth_method": os.getenv('SHOPIFY_AUTH_METHOD'),
+                    "access_token": os.getenv('SHOPIFY_ACCESS_TOKEN'),
+                }
+            }
+
+            ingestor = ShopifyIngestor(config=config, stream_name=os.getenv('SHOPIFY_RESOURCE'))
             docs = ingestor.ingest()
             
             splitter = TxtSplitter(docs)
@@ -185,7 +185,3 @@ class AssistantApi(FastAPI):
 
         except Exception as e:
             logger.error(f"[PARROT ERRR]: {e}")
-
-    def create_data_base(self):
-        db = SupabaseDatabase()
-        return db

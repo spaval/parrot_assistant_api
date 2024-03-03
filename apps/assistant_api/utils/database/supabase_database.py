@@ -4,9 +4,9 @@ from utils.database.database import Database
 from supabase import create_client, Client
 
 class SupabaseDatabase(Database):
-    def __init__(self, url=os.getenv('SUPABASE_URL'), key=os.getenv('SUPABASE_KEY')):
+    def __init__(self):
         super().__init__()
-        self.client: Client = create_client(url, key)
+        self.client: Client = create_client(os.getenv('SUPABASE_URL'), os.getenv('SUPABASE_KEY'))
 
     def connect(self):
         pass
@@ -27,7 +27,7 @@ class SupabaseDatabase(Database):
         return response
 
     def save(self, table, data):        
-        response, _ = self.client.table(table).insert(data).execute()
+        response = self.client.table(table).insert(data).execute()
         return response
 
     def delete(self, table, id, key='id'):
