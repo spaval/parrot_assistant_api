@@ -87,33 +87,13 @@ class AssistantApi(FastAPI):
         return vector_store
 
     def create_prompt_template(self):
-        template = f'''
-            Eres el bot {os.getenv('BOT_NAME')}.
-            Fuiste creado para interactuar en conversaciones con humanos.
-            Responde las preguntas que recibas basándote sólamente en el conocimiento que tienes.
-            Si no sabes la respuesta, di que no cuentas con la información para dar respuesta a la pregunta.
-            No trates de inventar una respuesta.
-            Responde siempre en español con un tono amigable y acento colombiano.
-            No muestres la palabra Assistant, Human, Pregunta, Respuesta o AI en la respuesta, sólo la respuesta del asistente de forma puntual.
-            
-            <context>
-            {{context}}
-            {{chat_history}}
-            </context>
-
-            Question: {{input}}
-        '''
-
-        prompt = ChatPromptTemplate.from_template(
-            template
-        )
-
+        prompt = ChatPromptTemplate.from_template(os.getenv('MODEL_PROMPT_TEMPLATE'))
         return prompt
 
     def create_conversational_chain(self, vector_store):
         model = ChatOpenAI(
             model_name=os.getenv('MODEL_NAME'),
-            temperature=os.getenv('TEMPERATURE'),
+            temperature=os.getenv('MODEL_TEMPERATURE'),
             streaming=True,
             max_tokens=512,
         )
