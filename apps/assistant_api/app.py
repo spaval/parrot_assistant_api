@@ -1,20 +1,19 @@
 import os
 import logging
 
-from pathlib import Path
 from dotenv import load_dotenv
 from fastapi import FastAPI, BackgroundTasks
 from langchain_openai import OpenAIEmbeddings, ChatOpenAI
+from langchain_groq import ChatGroq
 from langchain_core.prompts import ChatPromptTemplate
 from langchain.chains import create_retrieval_chain
 from langchain_community.chat_message_histories import ChatMessageHistory
 from langchain.chains.combine_documents import create_stuff_documents_chain
-from utils.ingestor.shopify_ingestor import ShopifyIngestor
 
 from utils.database.supabase_database import SupabaseDatabase
 from dtos.training import Training
 from utils.splitter.txt_splitter import TxtSplitter
-from utils.store.faiss_store import FaissStore
+from utils.store.supabase_store import SupabaseStore
 from utils.ingestor.google_drive_ingestor import GoogleDriveIngestor
 
 # Configuración del logger
@@ -52,7 +51,8 @@ class AssistantApi(FastAPI):
         
         chat_history = ChatMessageHistory()
         chat_history = self.load_previous_chat_history(session_id=id, chat_history=chat_history)
-        vector_store = self.create_vector_store_index()
+        vector_store = self.load_vector_store_index()
+
         chain = self.create_conversational_chain(vector_store)
         response = self.generate_assistant_response(chain, q, chat_history)
 
@@ -70,7 +70,7 @@ class AssistantApi(FastAPI):
                 "source": source, 
             }
 
-            task.add_task(self.db.save, os.getenv('CHATS_DATABASE_NAME'), data)
+            task.add_task(self.db.save, os.getenv('CHATS_TABLE_NAME'), data)
 
         return {
             "error": error,
@@ -79,9 +79,9 @@ class AssistantApi(FastAPI):
             }
         }
             
-    def create_vector_store_index(self):
+    def load_vector_store_index(self):
         embeddings = OpenAIEmbeddings()
-        store = FaissStore(embeddings)
+        store = SupabaseStore(embeddings)
         vector_store = store.load()
 
         return vector_store
@@ -91,18 +91,22 @@ class AssistantApi(FastAPI):
         return prompt
 
     def create_conversational_chain(self, vector_store):
-        model = ChatOpenAI(
+        '''model = ChatOpenAI(
             model_name=os.getenv('MODEL_NAME'),
             temperature=os.getenv('MODEL_TEMPERATURE'),
             streaming=True,
             max_tokens=512,
+        )'''
+        model = ChatGroq(
+            model_name=os.getenv('MODEL_NAME'),
+            temperature=os.getenv('MODEL_TEMPERATURE'),
         )
 
         prompt = self.create_prompt_template()
         document_chain = create_stuff_documents_chain(model, prompt)
 
         retrieval_chain = create_retrieval_chain(
-            vector_store.as_retriever(search_kwargs={'k': 3}),
+            vector_store.as_retriever(),
             document_chain,
         )
 
@@ -115,7 +119,7 @@ class AssistantApi(FastAPI):
     def load_previous_chat_history(self, session_id, chat_history):
         try:
             messages =self.db.get(
-                table=os.getenv('CHATS_DATABASE_NAME'),
+                table=os.getenv('CHATS_TABLE_NAME'),
                 filters={'session_id': session_id},
                 columns='session_id, question, answer',
                 order_by='created_at',
@@ -140,24 +144,15 @@ class AssistantApi(FastAPI):
         logger.info(f"[PARROT INFO]: **Training task started...**")
 
         try:
-            config = {
-                "start_date": os.getenv('SHOPIFY_START_DATE'),
-                "shop": os.getenv('SHOPIFY_STORE'),
-                "credentials": {
-                    "auth_method": os.getenv('SHOPIFY_AUTH_METHOD'),
-                    "access_token": os.getenv('SHOPIFY_ACCESS_TOKEN'),
-                }
-            }
-
-            ingestor = ShopifyIngestor(config=config, stream_name=os.getenv('SHOPIFY_RESOURCE'))
+            ingestor = GoogleDriveIngestor()
             docs = ingestor.ingest()
             
             splitter = TxtSplitter(docs)
             chunks = splitter.split(size=500, overlap=100)
             
             embeddings = OpenAIEmbeddings()
-            
-            store = FaissStore(embeddings)
+
+            store = SupabaseStore(embeddings)
             store.save(chunks)
 
             message = "**Task Completed!**"

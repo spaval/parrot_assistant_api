@@ -26,7 +26,7 @@ class SupabaseDatabase(Database):
         response = clt.execute()
         return response
 
-    def save(self, table, data):        
+    def save(self, table, data):
         response = self.client.table(table).insert(data).execute()
         return response
 
