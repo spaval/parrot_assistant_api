@@ -1,187 +1,25 @@
 import os
-import logging
 
-from pathlib import Path
 from dotenv import load_dotenv
-from fastapi import FastAPI, BackgroundTasks
-from langchain_openai import OpenAIEmbeddings, ChatOpenAI
-from langchain_core.prompts import ChatPromptTemplate
-from langchain.chains import create_retrieval_chain
-from langchain_community.chat_message_histories import ChatMessageHistory
-from langchain.chains.combine_documents import create_stuff_documents_chain
-from utils.ingestor.shopify_ingestor import ShopifyIngestor
+from fastapi import FastAPI
 
-from utils.database.supabase_database import SupabaseDatabase
-from dtos.training import Training
-from utils.splitter.txt_splitter import TxtSplitter
-from utils.store.faiss_store import FaissStore
-from utils.ingestor.google_drive_ingestor import GoogleDriveIngestor
-
-# Configuración del logger
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
-
-DEFAULT_MESSAGE_ERROR = 'No se pudo obtener una respuesta por parte del asistente'
+from feature.assistant.infrastructure.entrypoint.rest.handler.assistant_handler import AssistantHandler
 
 class AssistantApi(FastAPI):
-    def __init__(self, **extra: any):
+    def __init__(
+        self,
+        handler: AssistantHandler,
+        **extra: any
+    ):
         super().__init__(**extra)
+
+        self.handler = handler
 
         env = os.getenv('env') or 'dev'
         path = f"config/.env.{env}"
 
         load_dotenv(path)
-        self.db = self.create_data_base()
 
-        self.add_api_route("/parrot/train", self.train, methods=["POST"])
-        self.add_api_route("/parrot/query", self.query, methods=["GET"])
-
-    async def train(self, data: Training, task: BackgroundTasks):
-        task.add_task(self.process_data_sources, data.email)
-            
-        return {
-            "error": None,
-            "data": {
-                "answer": "Se ha empezado el entrenamiento del asistente, una vez culminado se notificará vía correo electrónico."
-            }
-        }
-    
-    async def query(self, q, id, source, task: BackgroundTasks):
-        if q is None:
-            return None
+        self.add_api_route("/parrot/train", self.handler.train, methods=["POST"])
+        self.add_api_route("/parrot/query", self.handler.query, methods=["GET"])
         
-        chat_history = ChatMessageHistory()
-        chat_history = self.load_previous_chat_history(session_id=id, chat_history=chat_history)
-        vector_store = self.create_vector_store_index()
-        chain = self.create_conversational_chain(vector_store)
-        response = self.generate_assistant_response(chain, q, chat_history)
-
-        error: str = DEFAULT_MESSAGE_ERROR
-        answer: str = ''
-
-        if response:
-            error = None
-            answer = response.get('answer')
-
-            data = {
-                "question": q,
-                "answer": answer,
-                "session_id": id,
-                "source": source, 
-            }
-
-            task.add_task(self.db.save, os.getenv('CHATS_DATABASE_NAME'), data)
-
-        return {
-            "error": error,
-            "data": {
-                "answer": answer
-            }
-        }
-            
-    def create_vector_store_index(self):
-        embeddings = OpenAIEmbeddings()
-        store = FaissStore(embeddings)
-        vector_store = store.load()
-
-        return vector_store
-
-    def create_prompt_template(self):
-        template = f'''
-            Eres el bot {os.getenv('BOT_NAME')}.
-            Fuiste creado para interactuar en conversaciones con humanos.
-            Responde las preguntas que recibas basándote sólamente en el conocimiento que tienes.
-            Si no sabes la respuesta, di que no cuentas con la información para dar respuesta a la pregunta.
-            No trates de inventar una respuesta.
-            Responde siempre en español con un tono amigable y acento colombiano.
-            No muestres la palabra Assistant, Human, Pregunta, Respuesta o AI en la respuesta, sólo la respuesta del asistente de forma puntual.
-            
-            <context>
-            {{context}}
-            {{chat_history}}
-            </context>
-
-            Question: {{input}}
-        '''
-
-        prompt = ChatPromptTemplate.from_template(
-            template
-        )
-
-        return prompt
-
-    def create_conversational_chain(self, vector_store):
-        model = ChatOpenAI(
-            model_name=os.getenv('MODEL_NAME'),
-            temperature=os.getenv('TEMPERATURE'),
-            streaming=True,
-            max_tokens=512,
-        )
-
-        prompt = self.create_prompt_template()
-        document_chain = create_stuff_documents_chain(model, prompt)
-
-        retrieval_chain = create_retrieval_chain(
-            vector_store.as_retriever(search_kwargs={'k': 3}),
-            document_chain,
-        )
-
-        return retrieval_chain
-
-    def generate_assistant_response(self, chain, prompt, chat_history):
-        response = chain.invoke({"input": prompt, "chat_history": chat_history})
-        return response
-
-    def load_previous_chat_history(self, session_id, chat_history):
-        try:
-            messages =self.db.get(
-                table=os.getenv('CHATS_DATABASE_NAME'),
-                filters={'session_id': session_id},
-                columns='session_id, question, answer',
-                order_by='created_at',
-                limit=os.getenv('MAX_MESSAGE_LIMIT'),
-            )
-
-            if messages.data:
-                for item in messages.data:
-                    chat_history.add_user_message(item.get('question'))
-                    chat_history.add_ai_message(item.get('answer'))
-
-        except Exception as e:
-            pass
-        
-        return chat_history
-
-    def create_data_base(self):
-        db = SupabaseDatabase()
-        return db
-    
-    def process_data_sources(self, email: str): 
-        logger.info(f"[PARROT INFO]: **Training task started...**")
-
-        try:
-            config = {
-                "start_date": os.getenv('SHOPIFY_START_DATE'),
-                "shop": os.getenv('SHOPIFY_STORE'),
-                "credentials": {
-                    "auth_method": os.getenv('SHOPIFY_AUTH_METHOD'),
-                    "access_token": os.getenv('SHOPIFY_ACCESS_TOKEN'),
-                }
-            }
-
-            ingestor = ShopifyIngestor(config=config, stream_name=os.getenv('SHOPIFY_RESOURCE'))
-            docs = ingestor.ingest()
-            
-            splitter = TxtSplitter(docs)
-            chunks = splitter.split(size=500, overlap=100)
-            
-            embeddings = OpenAIEmbeddings()
-            
-            store = FaissStore(embeddings)
-            store.save(chunks)
-
-            message = "**Task Completed!**"
-            logger.info(f"[PARROT INFO]: {message}")
-
-        except Exception as e:
-            logger.error(f"[PARROT ERRR]: {e}")
