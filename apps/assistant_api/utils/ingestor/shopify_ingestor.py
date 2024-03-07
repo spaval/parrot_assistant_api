@@ -21,7 +21,9 @@ class ShopifyIngestor(Ingestor):
 
         if docs:
             for doc in docs:
-                doc.page_content = get_title(doc)
+                status = doc.metadata.get('status')
+                if status == 'active':
+                    doc.page_content = get_title(doc)
 
         return docs
     
