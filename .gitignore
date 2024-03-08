@@ -166,6 +166,7 @@ cython_debug/
 .DS_Store
 .idea/
 
+venv/
 assistant_api/venv/
 telegram_bot/venv/
 
