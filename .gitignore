@@ -166,11 +166,16 @@ cython_debug/
 .DS_Store
 .idea/
 
+venv/
 assistant_api/venv/
 telegram_bot/venv/
 
 assistant_api/__pycache__/
 telegram_bot/__pycache__/
+
+assets/store/
+assets/data/
+assets/messages/
 
 apps/assistant_api/assets/data/
 apps/assistant_api/assets/messages/
