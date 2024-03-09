@@ -28,7 +28,11 @@ class AssistantService:
 
         try:
             docs = self.ingestor_repository.ingest()
-            chunks = self.model_orchestration_repository.get_splitted_documents(docs, size=os.getenv('DOCUMENTS_SPLITTED_SIZE'), overlap=os.getenv('DOCUMENTS_SPLITTED_OVERLAP'))
+            chunks = self.model_orchestration_repository.get_splitted_documents(
+                docs,
+                size=int(os.getenv('DOCUMENTS_SPLITTED_SIZE')),
+                overlap=int(os.getenv('DOCUMENTS_SPLITTED_OVERLAP'))
+            )
             self.vector_store_repository.save(chunks)
 
             logger.info(f"[{os.getenv('BOT_NAME')}]: **Training Completed!**")
