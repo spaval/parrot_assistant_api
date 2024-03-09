@@ -4,7 +4,7 @@ from supabase import create_client, Client
 from supabase.lib.client_options import ClientOptions
 from langchain_community.vectorstores import SupabaseVectorStore
 
-from utils.store.store import Store
+from shared.store.store import Store
 
 class SupabaseStore(Store):
     def __init__(self, embeddings, path=os.getenv('VECTOR_STORE_LOCATION')):
