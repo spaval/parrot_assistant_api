@@ -22,8 +22,8 @@ class App(FastAPI):
 
         self.handler = AssistantHandler(service=assistant_service)
 
-        self.add_api_route("/parrot/train", self.handler.train, methods=["POST"])
-        self.add_api_route("/parrot/query", self.handler.query, methods=["GET"])
+        self.add_api_route("/train", self.handler.train, methods=["POST"])
+        self.add_api_route("/query", self.handler.query, methods=["GET"])
 
     def run(self):
         uvicorn.run(
