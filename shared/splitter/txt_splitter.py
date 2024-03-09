@@ -8,8 +8,8 @@ class TxtSplitter(Splitter):
     def split(self, size=500, overlap=100, separator="\n"):
         text_sppliter = RecursiveCharacterTextSplitter(
             separators=[separator],
-            chunk_size=size,
-            chunk_overlap=overlap,
+            chunk_size=int(size),
+            chunk_overlap=int(overlap),
             length_function=len
         )
 
