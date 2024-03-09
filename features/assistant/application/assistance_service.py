@@ -28,7 +28,12 @@ class AssistantService:
 
         try:
             docs = self.ingestor_repository.ingest()
-            chunks = self.model_orchestration_repository.get_splitted_documents(docs, size=os.getenv('DOCUMENTS_SPLITTED_SIZE'), overlap=os.getenv('DOCUMENTS_SPLITTED_OVERLAP'))
+            chunks = self.model_orchestration_repository.get_splitted_documents(
+                docs,
+                size=int(os.getenv('DOCUMENTS_SPLITTED_SIZE')),
+                overlap=int(os.getenv('DOCUMENTS_SPLITTED_OVERLAP')),
+            )
+
             self.vector_store_repository.save(chunks)
 
             logger.info(f"[{os.getenv('BOT_NAME')}]: **Training Completed!**")
@@ -41,11 +46,12 @@ class AssistantService:
 
         try:
             vector_store = self.vector_store_repository.load()
-            prompt_template = self.model_orchestration_repository.get_prompt_template()
-            chain = self.model_orchestration_repository.get_conversation_chain(vector_store, prompt_template)
 
             messages = self.database_repository.get_chat_messages(session_id=id)
             chat_history = self.model_orchestration_repository.get_chat_history(messages)
+
+            prompt_template = self.model_orchestration_repository.get_prompt_template()
+            chain = self.model_orchestration_repository.get_conversation_chain(vector_store, prompt_template, chat_history)
 
             response = self.model_orchestration_repository.get_assistant_response(chain, q, chat_history)
 
@@ -56,7 +62,7 @@ class AssistantService:
                 "source": source, 
             }
 
-            task.add_task(self.database_repository.save, os.getenv('CHATS_TABLE_NAME'), data)
+            task.add_task(self.database_repository.save_chat_messages, os.getenv('CHATS_TABLE_NAME'), data)
 
         except Exception as e:
             logger.error(f"[{os.getenv('BOT_NAME')}]: {e}")

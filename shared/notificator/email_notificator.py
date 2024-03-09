@@ -35,4 +35,4 @@ class EmailNotificator(Notificator):
                 provider.sendmail(smtp_username, self.receiver, message.as_string())
 
         except smtplib.SMTPException as error:
-            print(f'[PARROT ERROR] Unable to send the email to the address {self.receiver}: {error}')
+            print(f'[PARROT] Unable to send the email to the address {self.receiver}: {error}')

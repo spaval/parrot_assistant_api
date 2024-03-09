@@ -1,38 +1,68 @@
 import os
 
-from langchain_groq import ChatGroq
+from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
-from langchain.chains import create_retrieval_chain
 from langchain_community.chat_message_histories import ChatMessageHistory
-from langchain.chains.combine_documents import create_stuff_documents_chain
-
 from shared.splitter.txt_splitter import TxtSplitter
 from features.assistant.domain.model_orchestration_repository import ModelOrchestrationRepository
+from langchain.chains import ConversationalRetrievalChain
+from langchain.memory import ConversationBufferMemory
 
 class LangchainModelOrchestrationRepositoryAdapter(ModelOrchestrationRepository):
-    def get_conversation_chain(self, vector_store, prompt_template):
-        model = ChatGroq(
+    def get_conversation_chain(self, vector_store, prompt_template, chat_history):
+        model = ChatOpenAI(
+            openai_api_key=os.getenv('MODEL_API_KEY'),
             model_name=os.getenv('MODEL_NAME'),
             temperature=os.getenv('MODEL_TEMPERATURE'),
             streaming=os.getenv('MODEL_STREAMING'),
             max_tokens=os.getenv('MODEL_MAX_TOKENS'),
         )
 
-        document_chain = create_stuff_documents_chain(model, prompt_template)
+        '''document_chain = create_stuff_documents_chain(
+            model,
+            prompt_template,
+        )
 
         retrieval_chain = create_retrieval_chain(
-            vector_store.as_retriever(),
+            vector_store.as_retriever(search_kwargs={'k': 3}),
             document_chain,
+        )'''
+
+        memory = ConversationBufferMemory(
+            llm=model,
+            input_key='question',
+            output_key='answer',
+            memory_key="chat_history",
+            return_messages=True,
+            max_token_limit=int(os.getenv('MODEL_MAX_TOKENS')),
+            chat_memory=chat_history,
+        )
+        
+        retrieval_chain = ConversationalRetrievalChain.from_llm(
+            model,
+            chain_type="stuff",
+            retriever=vector_store.as_retriever(search_kwargs={'k': 3}),
+            combine_docs_chain_kwargs={"prompt": prompt_template},
+            memory=memory,
+            return_source_documents=True,
+            verbose=False,
         )
 
         return retrieval_chain
     
     def get_assistant_response(self, chain, prompt, chat_history):
-        response = chain.invoke({"input": prompt, "chat_history": chat_history})
+        response = chain.invoke({
+            "question": prompt,
+            "chat_history": chat_history.messages,
+        })
+
         return response
     
     def get_prompt_template(self):
-        prompt = ChatPromptTemplate.from_template(os.getenv('MODEL_PROMPT_TEMPLATE'))
+        prompt = ChatPromptTemplate.from_messages([
+            ("system", os.getenv('MODEL_PROMPT_TEMPLATE')),
+        ])
+
         return prompt
     
     def get_chat_history(self, messages):
