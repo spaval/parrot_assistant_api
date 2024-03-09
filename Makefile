@@ -33,7 +33,7 @@ build:
 	docker build --build-arg env_arg=pdn -t bongga/parrot-assistant-api:0.0.1 -f config/Dockerfile .
 
 docker:
-	docker run -itd --name parrot-assistant-api-container -p 8000:8000 bongga/parrot-assistant-api:0.0.1
+	docker run -itd --name parrot-assistant-api-container -p 8000:8000 --restart unless-stopped bongga/parrot-assistant-api:0.0.1
 
 deploy:
 	docker push bongga/parrot-assistant-api:0.0.1
