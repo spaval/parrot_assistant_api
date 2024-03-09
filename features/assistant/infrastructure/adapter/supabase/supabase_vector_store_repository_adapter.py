@@ -1,9 +1,6 @@
 import os
 
-<<<<<<< HEAD
 from langchain_openai import OpenAIEmbeddings
-=======
->>>>>>> develop
 from shared.store.supabase_store import SupabaseStore
 from features.assistant.domain.vector_store_repository import VectorStoreRepository
 
