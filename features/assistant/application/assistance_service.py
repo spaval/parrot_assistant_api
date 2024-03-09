@@ -60,7 +60,7 @@ class AssistantService:
                 "source": source, 
             }
 
-            task.add_task(self.database_repository.save, os.getenv('CHATS_TABLE_NAME'), data)
+            task.add_task(self.database_repository.save_chat_messages, os.getenv('CHATS_TABLE_NAME'), data)
 
         except Exception as e:
             logger.error(f"[{os.getenv('BOT_NAME')}]: {e}")
