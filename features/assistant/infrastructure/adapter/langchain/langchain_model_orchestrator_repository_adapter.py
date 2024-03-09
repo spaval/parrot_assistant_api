@@ -18,16 +18,6 @@ class LangchainModelOrchestrationRepositoryAdapter(ModelOrchestrationRepository)
             max_tokens=os.getenv('MODEL_MAX_TOKENS'),
         )
 
-        '''document_chain = create_stuff_documents_chain(
-            model,
-            prompt_template,
-        )
-
-        retrieval_chain = create_retrieval_chain(
-            vector_store.as_retriever(search_kwargs={'k': 3}),
-            document_chain,
-        )'''
-
         memory = ConversationBufferMemory(
             llm=model,
             input_key='question',
