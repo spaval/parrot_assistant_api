@@ -32,6 +32,7 @@ class AssistantService:
                 docs,
                 size=int(os.getenv('DOCUMENTS_SPLITTED_SIZE')),
                 overlap=int(os.getenv('DOCUMENTS_SPLITTED_OVERLAP')),
+                separators=['CAPITULO', 'CAPÍTULO'],
             )
 
             self.vector_store_repository.save(chunks)
