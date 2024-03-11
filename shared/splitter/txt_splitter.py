@@ -5,9 +5,9 @@ class TxtSplitter(Splitter):
     def __init__(self, documents):
         super().__init__(documents)
 
-    def split(self, size=500, overlap=100, separator="\n"):
+    def split(self, size=500, overlap=100, separators=["\n"]):
         text_sppliter = RecursiveCharacterTextSplitter(
-            separators=[separator],
+            separators=separators,
             chunk_size=int(size),
             chunk_overlap=int(overlap),
             length_function=len
