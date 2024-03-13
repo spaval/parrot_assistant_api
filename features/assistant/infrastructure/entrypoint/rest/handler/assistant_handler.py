@@ -26,15 +26,23 @@ class AssistantHandler():
         
         error: str = DEFAULT_MESSAGE_ERROR
         answer: str = ''
+        source: str = ''
         
         response = self.service.query(q, id, source, task)
         if response:
             error = None
             answer = response.get('answer')
+            sources = response.get('source_documents')
 
+            if sources:
+                source = sources[0].metadata
+                if source.get('title') and source.get('page_number'):
+                    reference = f"{source.get('title')} (Pag. {source.get('page_number')})"
+                    answer = f"{answer}\n\nFuente: {reference}"
+        
         return {
             "error": error,
             "data": {
-                "answer": answer
+                "answer": answer,
             }
         }
