@@ -54,10 +54,14 @@ class AssistantService:
 
         try:
             vector_store = self.vector_store_repository.load()
-            prompt_template = self.model_orchestration_repository.get_prompt_template()
-            chain = self.model_orchestration_repository.get_conversation_chain(vector_store, prompt_template)
-            response = self.model_orchestration_repository.get_assistant_response(chain, q)
 
+            messages = self.database_repository.get_chat_messages(session_id=id)
+            chat_history = self.model_orchestration_repository.get_chat_history(messages)
+
+            prompt_template = self.model_orchestration_repository.get_prompt_template()
+            chain = self.model_orchestration_repository.get_conversation_chain(vector_store, prompt_template, chat_history)
+            response = self.model_orchestration_repository.get_assistant_response(chain, q, chat_history)
+            
             data = {
                 "question": q,
                 "answer": response.get('answer'),
@@ -65,7 +69,7 @@ class AssistantService:
                 "source": source, 
             }
 
-            #task.add_task(self.database_repository.save_chat_messages, os.getenv('CHATS_TABLE_NAME'), data)
+            task.add_task(self.database_repository.save_chat_messages, os.getenv('CHATS_TABLE_NAME'), data)
 
         except Exception as e:
             logger.error(f"[{os.getenv('BOT_NAME')}]: {e}")
