@@ -1,15 +1,16 @@
 import os
 
 from langchain_openai import ChatOpenAI
-from langchain_core.prompts import ChatPromptTemplate
-from langchain_community.chat_message_histories import ChatMessageHistory
 from shared.splitter.txt_splitter import TxtSplitter
-from features.assistant.domain.model_orchestration_repository import ModelOrchestrationRepository
-from langchain.chains import ConversationalRetrievalChain
 from langchain.memory import ConversationBufferMemory
+from langchain.chains import ConversationalRetrievalChain
+from langchain_community.chat_message_histories import ChatMessageHistory
+from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
+from features.assistant.domain.model_orchestration_repository import ModelOrchestrationRepository
+from langchain_community.chat_message_histories import ChatMessageHistory
 
 class LangchainModelOrchestrationRepositoryAdapter(ModelOrchestrationRepository):
-    def get_conversation_chain(self, vector_store, prompt_template, chat_history):
+    def get_conversation_chain(self, vector_store, prompt_template, chat_history: ChatMessageHistory = ChatMessageHistory()):
         model = ChatOpenAI(
             openai_api_key=os.getenv('MODEL_API_KEY'),
             model_name=os.getenv('MODEL_NAME'),
@@ -19,7 +20,6 @@ class LangchainModelOrchestrationRepositoryAdapter(ModelOrchestrationRepository)
         )
 
         memory = ConversationBufferMemory(
-            llm=model,
             input_key='question',
             output_key='answer',
             memory_key="chat_history",
@@ -28,19 +28,21 @@ class LangchainModelOrchestrationRepositoryAdapter(ModelOrchestrationRepository)
             chat_memory=chat_history,
         )
         
-        retrieval_chain = ConversationalRetrievalChain.from_llm(
+        chain = ConversationalRetrievalChain.from_llm(
             model,
             chain_type="stuff",
-            retriever=vector_store.as_retriever(search_kwargs={'k': 3}),
-            combine_docs_chain_kwargs={"prompt": prompt_template},
+            retriever=vector_store.as_retriever(search_type = "similarity", search_kwargs = {"k" : 1}),
             memory=memory,
             return_source_documents=True,
             verbose=False,
+            combine_docs_chain_kwargs={
+                "prompt": prompt_template,
+            },
         )
 
-        return retrieval_chain
+        return chain
     
-    def get_assistant_response(self, chain, prompt, chat_history):
+    def get_assistant_response(self, chain, prompt, chat_history: ChatMessageHistory = ChatMessageHistory()):
         response = chain.invoke({
             "question": prompt,
             "chat_history": chat_history.messages,
@@ -51,6 +53,7 @@ class LangchainModelOrchestrationRepositoryAdapter(ModelOrchestrationRepository)
     def get_prompt_template(self):
         prompt = ChatPromptTemplate.from_messages([
             ("system", os.getenv('MODEL_PROMPT_TEMPLATE')),
+            ("human", "{question}"),
         ])
 
         return prompt

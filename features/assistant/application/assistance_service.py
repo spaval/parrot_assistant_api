@@ -35,6 +35,13 @@ class AssistantService:
                 separators=['CAPITULO', 'CAPÍTULO'],
             )
 
+            for chunk in chunks:
+                chunk.metadata = {
+                    "source": chunk.metadata.get('title'),
+                    "url": chunk.metadata.get('source'),
+                    "page": chunk.metadata.get('page_number'),
+                }
+
             self.vector_store_repository.save(chunks)
 
             logger.info(f"[{os.getenv('BOT_NAME')}]: **Training Completed!**")
@@ -53,9 +60,8 @@ class AssistantService:
 
             prompt_template = self.model_orchestration_repository.get_prompt_template()
             chain = self.model_orchestration_repository.get_conversation_chain(vector_store, prompt_template, chat_history)
-
             response = self.model_orchestration_repository.get_assistant_response(chain, q, chat_history)
-
+            
             data = {
                 "question": q,
                 "answer": response.get('answer'),
