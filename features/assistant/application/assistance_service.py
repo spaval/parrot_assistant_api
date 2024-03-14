@@ -35,6 +35,13 @@ class AssistantService:
                 separators=['CAPITULO', 'CAPÍTULO'],
             )
 
+            for chunk in chunks:
+                chunk.metadata = {
+                    "source": chunk.metadata.get('title'),
+                    "url": chunk.metadata.get('source'),
+                    "page": chunk.metadata.get('page_number'),
+                }
+
             self.vector_store_repository.save(chunks)
 
             logger.info(f"[{os.getenv('BOT_NAME')}]: **Training Completed!**")
@@ -47,14 +54,9 @@ class AssistantService:
 
         try:
             vector_store = self.vector_store_repository.load()
-
-            messages = self.database_repository.get_chat_messages(session_id=id)
-            chat_history = self.model_orchestration_repository.get_chat_history(messages)
-
             prompt_template = self.model_orchestration_repository.get_prompt_template()
-            chain = self.model_orchestration_repository.get_conversation_chain(vector_store, prompt_template, chat_history)
-
-            response = self.model_orchestration_repository.get_assistant_response(chain, q, chat_history)
+            chain = self.model_orchestration_repository.get_conversation_chain(vector_store, prompt_template)
+            response = self.model_orchestration_repository.get_assistant_response(chain, q)
 
             data = {
                 "question": q,
@@ -63,7 +65,7 @@ class AssistantService:
                 "source": source, 
             }
 
-            task.add_task(self.database_repository.save_chat_messages, os.getenv('CHATS_TABLE_NAME'), data)
+            #task.add_task(self.database_repository.save_chat_messages, os.getenv('CHATS_TABLE_NAME'), data)
 
         except Exception as e:
             logger.error(f"[{os.getenv('BOT_NAME')}]: {e}")
