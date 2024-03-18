@@ -1,6 +1,7 @@
 from features.assistant.application.assistance_service import AssistantService
-from features.assistant.infrastructure.entrypoint.rest.handler.dto.query_response import QueryResponse, QueryResponseData, QueryResponseError
-from features.assistant.infrastructure.entrypoint.rest.handler.dto.training import Training
+from features.assistant.infrastructure.entrypoint.rest.handler.dto.query import QueryResponse, QueryResponseData, QueryResponseError
+from features.assistant.infrastructure.entrypoint.rest.handler.dto.training import TrainingRequest
+from features.assistant.infrastructure.entrypoint.rest.handler.dto.query import QueryRequest
 from shared.helpers.contains import contains
 from shared.url_shortener.url_shortener import short
 
@@ -14,19 +15,19 @@ class AssistantHandler():
     def __init__(self, service: AssistantService):
         self.service = service
 
-    async def train(self, data: Training, task: BackgroundTasks):
-        task.add_task(self.service.train, data.email)
+    async def train(self, data: TrainingRequest, task: BackgroundTasks):
+        task.add_task(self.service.train)
     
         return QueryResponse(
             error=None, 
             data=QueryResponseData(answer=DEFAULT_TRAINING_MESSAGE)
         )
 
-    async def query(self, q, id, source, task: BackgroundTasks) -> QueryResponse:
-        if q is None:
+    async def query(self, data: QueryRequest, task: BackgroundTasks) -> QueryResponse:
+        if not data.question:
             return None
         
-        response = self.service.query(q, id, source, task)
+        response = self.service.query(data.question, data.conversation_id, data.platform_source, task)
         if not response:
             return QueryResponse(
                 error=QueryResponseError(message=DEFAULT_MESSAGE_ERROR), 

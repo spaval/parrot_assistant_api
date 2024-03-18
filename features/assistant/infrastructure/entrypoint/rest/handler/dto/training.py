@@ -1,4 +1,5 @@
 from pydantic import BaseModel, EmailStr
 
-class Training(BaseModel):
-    email: EmailStr
+class TrainingRequest(BaseModel):
+    tenant_id: str
+    notification_email: EmailStr

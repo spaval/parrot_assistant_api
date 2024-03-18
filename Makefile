@@ -4,6 +4,7 @@
 VIRTUALENV = venv
 PYTHON = $(VIRTUALENV)/bin/python3
 PIP = $(VIRTUALENV)/bin/pip
+VERSION=0.0.2
 
 clean:
 	@rm -rf $(VIRTUALENV)
@@ -30,17 +31,17 @@ lunch:
 	python3 main.py
 
 build:
-	docker build --build-arg env_arg=pdn -t bongga/parrot-assistant-api:0.0.1 -f config/Dockerfile .
+	docker build --build-arg env_arg=pdn -t bongga/parrot-assistant-api:$(VERSION) -f config/Dockerfile .
 
 docker:
-	docker run -itd --name parrot-assistant-api-container -p 8000:8000 --restart unless-stopped bongga/parrot-assistant-api:0.0.1
+	docker run -itd --name parrot-assistant-api-container --replicas 2 -p 8000:8000 --restart unless-stopped bongga/parrot-assistant-api:$(VERSION)
 
 deploy:
-	docker push bongga/parrot-assistant-api:0.0.1
+	docker push bongga/parrot-assistant-api:$(VERSION)
  
 delete:
-	docker rmi -f bongga/parrot-assistant-api:0.0.1
+	docker rmi -f bongga/parrot-assistant-api:$(VERSION)
 	docker container prune -f
 	docker image prune -f
 
-.PHONY: venv activate clean
+.PHONY: venv activate clean build docker delete deploy
