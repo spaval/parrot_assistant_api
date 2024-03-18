@@ -23,7 +23,7 @@ class AssistantService:
         self.ingestor_repository = ingestor_repository
         self.model_orchestration_repository = model_orchestration_repository
         
-    def train(self, email: str): 
+    def train(self): 
         logger.info(f"[{os.getenv('BOT_NAME')}]: **Training started...**")
 
         try:
@@ -49,24 +49,24 @@ class AssistantService:
         except Exception as e:
             logger.error(f"[{os.getenv('BOT_NAME')}]: {e}")
 
-    def query(self, q, id, source, task):
+    def query(self, question, conversation_id, platform_source, task):
         response = dict()
 
         try:
             vector_store = self.vector_store_repository.load()
 
-            messages = self.database_repository.get_chat_messages(session_id=id)
+            messages = self.database_repository.get_chat_messages(conversation_id=conversation_id)
             chat_history = self.model_orchestration_repository.get_chat_history(messages)
 
             prompt_template = self.model_orchestration_repository.get_prompt_template()
             chain = self.model_orchestration_repository.get_conversation_chain(vector_store, prompt_template, chat_history)
-            response = self.model_orchestration_repository.get_assistant_response(chain, q, chat_history)
+            response = self.model_orchestration_repository.get_assistant_response(chain, question, chat_history)
             
             data = {
-                "question": q,
+                "question": question,
                 "answer": response.get('answer'),
-                "session_id": id,
-                "source": source, 
+                "conversation_id": conversation_id,
+                "source": platform_source, 
             }
 
             task.add_task(self.database_repository.save_chat_messages, os.getenv('CHATS_TABLE_NAME'), data)

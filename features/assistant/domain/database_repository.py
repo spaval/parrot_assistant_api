@@ -6,5 +6,5 @@ class DatabaseRepository(ABC):
         pass
 
     @abstractclassmethod
-    def get_chat_messages(self, session_id):
+    def get_chat_messages(self, conversation_id):
         pass

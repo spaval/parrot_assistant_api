@@ -10,14 +10,14 @@ class SupabaseDatabaseRepositoryAdapter(DatabaseRepository):
     def save_chat_messages(self, table, data):
         return self.db.save(table, data)
     
-    def get_chat_messages(self, session_id):
+    def get_chat_messages(self, conversation_id):
         messages = []
 
         try:
             messages = self.db.get(
                 table=os.getenv('CHATS_TABLE_NAME'),
-                filters={'session_id': session_id},
-                columns='session_id, question, answer',
+                filters={'conversation_id': conversation_id},
+                columns='conversation_id, question, answer',
                 order_by='created_at',
                 limit=os.getenv('MAX_MESSAGE_LIMIT'),
             )

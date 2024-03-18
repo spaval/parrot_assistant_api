@@ -7,14 +7,14 @@ from features.assistant.infrastructure.entrypoint.rest.handler.assistant_handler
 from features.assistant.infrastructure.adapter.google_drive.google_drive_repository_adapter import GoogleDriveRepositoryAdapter
 from features.assistant.infrastructure.adapter.langchain.langchain_model_orchestrator_repository_adapter import LangchainModelOrchestrationRepositoryAdapter
 from features.assistant.infrastructure.adapter.supabase.supabase_database_repository_adapter import SupabaseDatabaseRepositoryAdapter
-from features.assistant.infrastructure.adapter.supabase.supabase_vector_store_repository_adapter import SupabaseVectorStoreRepositoryAdapter
+from features.assistant.infrastructure.adapter.faiss.faiss_vector_store_repository_adapter import FaissVectorStoreRepositoryAdapter
 
 class App(FastAPI):
     def __init__(self, **kwargs: any):
         super().__init__(**kwargs)
         
         assistant_service = AssistantService(
-            vector_store_repository=SupabaseVectorStoreRepositoryAdapter(),
+            vector_store_repository=FaissVectorStoreRepositoryAdapter(),
             database_repository=SupabaseDatabaseRepositoryAdapter(),
             ingestor_repository=GoogleDriveRepositoryAdapter(),
             model_orchestration_repository=LangchainModelOrchestrationRepositoryAdapter(),
@@ -22,8 +22,8 @@ class App(FastAPI):
 
         self.handler = AssistantHandler(service=assistant_service)
 
-        self.add_api_route("/train", self.handler.train, methods=["POST"])
-        self.add_api_route("/query", self.handler.query, methods=["GET"])
+        self.add_api_route("/v0.0.2/train", self.handler.train, methods=["POST"])
+        self.add_api_route("/v0.0.2/query", self.handler.query, methods=["POST"])
 
     def run(self):
         uvicorn.run(
