@@ -6,7 +6,7 @@ from features.assistant.domain.vector_store_repository import VectorStoreReposit
 
 class SupabaseVectorStoreRepositoryAdapter(VectorStoreRepository):
     def __init__(self):
-        self.embeddings = OpenAIEmbeddings(openai_api_key=os.getenv('MODEL_API_KEY'))
+        self.embeddings = OpenAIEmbeddings(openai_api_key=os.getenv('EMBEDDING_MODEL_API_KEY'))
 
     def load(self):
         store = SupabaseStore(self.embeddings)

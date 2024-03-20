@@ -4,7 +4,7 @@
 VIRTUALENV = venv
 PYTHON = $(VIRTUALENV)/bin/python3
 PIP = $(VIRTUALENV)/bin/pip
-VERSION=0.0.2
+VERSION=0.0.3
 
 clean:
 	@rm -rf $(VIRTUALENV)

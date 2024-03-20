@@ -5,7 +5,7 @@ from shared.splitter.txt_splitter import TxtSplitter
 from langchain.memory import ConversationBufferMemory
 from langchain.chains import ConversationalRetrievalChain
 from langchain_community.chat_message_histories import ChatMessageHistory
-from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
+from langchain_core.prompts import ChatPromptTemplate
 from features.assistant.domain.model_orchestration_repository import ModelOrchestrationRepository
 from langchain_community.chat_message_histories import ChatMessageHistory
 
@@ -34,7 +34,7 @@ class LangchainModelOrchestrationRepositoryAdapter(ModelOrchestrationRepository)
             retriever=vector_store.as_retriever(search_type = "similarity", search_kwargs = {"k" : 1}),
             memory=memory,
             return_source_documents=True,
-            verbose=False,
+            verbose=True,
             combine_docs_chain_kwargs={
                 "prompt": prompt_template,
             },
@@ -61,8 +61,8 @@ class LangchainModelOrchestrationRepositoryAdapter(ModelOrchestrationRepository)
     def get_chat_history(self, messages):
         chat_history = ChatMessageHistory()
 
-        if messages.data:
-            for item in messages.data:
+        if messages:
+            for item in messages:
                 chat_history.add_user_message(item.get('question'))
                 chat_history.add_ai_message(item.get('answer'))
 

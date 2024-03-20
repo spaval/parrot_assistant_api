@@ -25,3 +25,4 @@ source_shopify==1.0.0
 lark==1.1.9
 langchain-groq==0.0.1
 pyshorteners==1.0.1
+langchain-anthropic==0.1.4

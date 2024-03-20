@@ -33,6 +33,6 @@ def get_title(doc):
 
     if variants:
         extra = variants[0]
-        title = f"Product: {doc.metadata['title']} - Price: {extra['price']} - ProductId: {extra['product_id']} - Size: {extra['weight']}{extra['weight_unit']}"
+        title = f"Producto: {doc.metadata['title']} | Precio: {int(extra['price'])} | ID: {extra['product_id']} | Peso: {extra['weight']}{extra['weight_unit']} | SKU: {extra['sku']}"
 
     return title
