@@ -12,14 +12,14 @@ def get_cached_data(cache_key):
         
     return []
 
-def save_data_to_cache(cache_key, data):
+def save_data_to_cache(cache_key, cache_data):
     if not os.path.exists(CACHE_DIR):
         os.makedirs(CACHE_DIR)
 
     cache_file = os.path.join(CACHE_DIR, f"{cache_key}.pkl")
 
     cached = get_cached_data(cache_key) or []
-    cached.append(data)
+    cached.append(cache_data)
 
     with open(cache_file, "wb") as f:
         cloudpickle.dump(cached, f)

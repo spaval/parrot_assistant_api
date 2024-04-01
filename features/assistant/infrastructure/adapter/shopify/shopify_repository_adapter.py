@@ -7,17 +7,14 @@ from features.assistant.domain.ingestor_repository import IngestorRepository
 class ShopifyRepositoryAdapter(IngestorRepository):
     def ingest(self):
         config = {
-            "start_date": os.getenv('SHOPIFY_START_DATE'),
-            "shop": os.getenv('SHOPIFY_STORE'),
-            "credentials": {
-                "auth_method": os.getenv('SHOPIFY_AUTH_METHOD'),
-                "access_token": os.getenv('SHOPIFY_ACCESS_TOKEN'),
-            }
+            "api_version": os.getenv('SHOPIFY_API_VERSION'),
+            "store_url": os.getenv('SHOPIFY_STORE_URL'),
+            "api_key": os.getenv('SHOPIFY_API_KEY'),
+            "resource": os.getenv('SHOPIFY_RESOURCE'),
         }
 
         ingestor = ShopifyIngestor(
             config=config,
-            stream_name=os.getenv('SHOPIFY_RESOURCE'),
         )
 
         return ingestor.ingest()

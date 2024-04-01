@@ -23,7 +23,7 @@ class GoogleDriveIngestor(Ingestor):
         )
         
         docs = loader.load()
-
+        
         for doc in docs:
             doc.metadata = {
                 "source": doc.metadata.get('title'),

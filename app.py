@@ -5,6 +5,7 @@ from fastapi import FastAPI
 from features.assistant.application.assistance_service import AssistantService
 from features.assistant.infrastructure.entrypoint.rest.handler.assistant_handler import AssistantHandler
 from features.assistant.infrastructure.adapter.shopify.shopify_repository_adapter import ShopifyRepositoryAdapter
+from features.assistant.infrastructure.adapter.google_drive.google_drive_repository_adapter import GoogleDriveRepositoryAdapter
 from features.assistant.infrastructure.adapter.langchain.langchain_model_orchestrator_repository_adapter import LangchainModelOrchestrationRepositoryAdapter
 from features.assistant.infrastructure.adapter.supabase.supabase_database_repository_adapter import SupabaseDatabaseRepositoryAdapter
 from features.assistant.infrastructure.adapter.faiss.faiss_vector_store_repository_adapter import FaissVectorStoreRepositoryAdapter
@@ -17,13 +18,16 @@ class App(FastAPI):
             vector_store_repository=FaissVectorStoreRepositoryAdapter(),
             database_repository=SupabaseDatabaseRepositoryAdapter(),
             ingestor_repository=ShopifyRepositoryAdapter(),
+            #ingestor_repository=GoogleDriveRepositoryAdapter(),
             model_orchestration_repository=LangchainModelOrchestrationRepositoryAdapter(),
         )
 
         self.handler = AssistantHandler(service=assistant_service)
 
+        self.add_event_handler("startup", self.handler.on_startup)
         self.add_api_route("/v0.0.2/train", self.handler.train, methods=["POST"])
         self.add_api_route("/v0.0.2/query", self.handler.query, methods=["POST"])
+        self.add_api_route("/v0.0.2/shop", self.handler.shop, methods=["POST"])
 
     def run(self):
         uvicorn.run(
