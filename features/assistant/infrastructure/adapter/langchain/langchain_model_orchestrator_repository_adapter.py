@@ -1,6 +1,7 @@
 import os
 
 from langchain_openai import ChatOpenAI
+from shared.helpers.documents import condense_question
 from shared.splitter.txt_splitter import TxtSplitter
 from langchain.memory import ChatMessageHistory
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
@@ -49,7 +50,7 @@ class LangchainModelOrchestrationRepositoryAdapter(ModelOrchestrationRepository)
             temperature=float(os.getenv('MODEL_TEMPERATURE')),
         )
 
-        retriever = vector_store.as_retriever(search_type = "similarity", search_kwargs = {"k" : 3})
+        retriever = vector_store.as_retriever(search_type = "similarity", search_kwargs = {"k" : 1})
 
         query_transforming_retriever_chain = RunnableBranch(
             (
@@ -60,11 +61,10 @@ class LangchainModelOrchestrationRepositoryAdapter(ModelOrchestrationRepository)
         ).with_config(run_name="chat_retriever_chain")
 
         documents_chain = create_stuff_documents_chain(chat, prompt)
-
-        retrieval_chain = RunnablePassthrough.assign(
-            context=query_transforming_retriever_chain,
-        ).assign(
-            answer=documents_chain,
+        retrieval_chain = (
+            RunnablePassthrough.assign(context=query_transforming_retriever_chain)
+            | RunnablePassthrough.assign(answer=documents_chain)
+            | RunnablePassthrough.assign(source_documents=condense_question | retriever)
         )
 
         response = await retrieval_chain.ainvoke({

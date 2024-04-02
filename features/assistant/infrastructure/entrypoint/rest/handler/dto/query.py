@@ -1,5 +1,6 @@
 from enum import Enum
 from pydantic import BaseModel
+from typing import Any
 
 class HistoryModeEnum(str, Enum):
     db = 'db'
@@ -22,6 +23,7 @@ class QueryResponseError(BaseModel):
 
 class QueryResponseData(BaseModel):
     answer: str
+    extra: Any = None
 
 class QueryResponse(BaseModel):
     error: QueryResponseError = None

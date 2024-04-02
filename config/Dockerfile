@@ -16,10 +16,10 @@ RUN apt update && apt install -y --no-install-recommends \
 EXPOSE 8000
 
 # Instala todas las dependencias
-RUN make dependencies
+RUN make install
 
 ARG env_arg=dev
 ENV env=$env_arg
 
 # Comando para ejecutar la aplicación
-CMD make lunch
+CMD make run
