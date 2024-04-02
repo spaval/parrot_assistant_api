@@ -49,7 +49,7 @@ class LangchainModelOrchestrationRepositoryAdapter(ModelOrchestrationRepository)
             temperature=float(os.getenv('MODEL_TEMPERATURE')),
         )
 
-        retriever = vector_store.as_retriever(search_type = "similarity", search_kwargs = {"k" : 1})
+        retriever = vector_store.as_retriever(search_type = "similarity", search_kwargs = {"k" : 3})
 
         query_transforming_retriever_chain = RunnableBranch(
             (

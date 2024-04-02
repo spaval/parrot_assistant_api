@@ -168,31 +168,13 @@ cython_debug/
 
 venv/
 assistant_api/venv/
-telegram_bot/venv/
-
 assistant_api/__pycache__/
-telegram_bot/__pycache__/
 
-assets/store/
-assets/data/
-assets/messages/
-
-apps/assistant_api/assets/data/
-apps/assistant_api/assets/messages/
-apps/assistant_api/assets/store/
+cache/
+config/store/
 
 config/*google_drive_credentials.json
 config/*google_drive_token.json
 
 apps/assistant_api/config/*google_drive_credentials.json
 apps/assistant_api/config/*google_drive_token.json
-
-node_modules/
-.env
-.env.dev
-.env.pdn
-*.log
-*_sessions/
-dist/
-*.png
-pnpm-lock.yaml
