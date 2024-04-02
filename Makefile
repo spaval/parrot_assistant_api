@@ -2,32 +2,26 @@
 .DEFAULT_GOAL := run
 
 VIRTUALENV = venv
-PYTHON = $(VIRTUALENV)/bin/python3
-PIP = $(VIRTUALENV)/bin/pip
-VERSION=0.0.2
+PYTHON = /opt/homebrew/bin/python3.9
+VERSION=0.0.3
 
 clean:
 	@rm -rf $(VIRTUALENV)
 	@rm -rf __pycache__
 
 venv: clean
-	@python3 -m venv $(VIRTUALENV)
+	@virtualenv -p $(PYTHON) $(VIRTUALENV)
 	@chmod +x $(VIRTUALENV)/bin/activate
 	@. $(VIRTUALENV)/bin/activate
-	@$(PYTHON) -m pip install --upgrade pip
-	@$(PIP) install --no-cache-dir -r config/requirements.txt
 
 setup: venv
 	@. $(VIRTUALENV)/bin/activate
 
-dependencies:
+install:
 	@python3 -m pip install --upgrade pip
 	@pip3 install --no-cache-dir -r config/requirements.txt
 
 run:
-	$(PYTHON) main.py
-
-lunch:
 	python3 main.py
 
 build:

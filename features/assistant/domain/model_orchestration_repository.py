@@ -2,7 +2,7 @@ from abc import ABC, abstractclassmethod
 
 class ModelOrchestrationRepository(ABC):
     @abstractclassmethod
-    def get_conversation_chain(self, vector_store, prompt_template, chat_history):
+    def get_chat_history(self, messages: list[any]):
         pass
 
     @abstractclassmethod
@@ -10,13 +10,9 @@ class ModelOrchestrationRepository(ABC):
         pass
 
     @abstractclassmethod
-    def get_assistant_response(self, chain, prompt, chat_history):
-        pass
-
-    @abstractclassmethod
-    def get_chat_history(self, messages):
-        pass
-
-    @abstractclassmethod
     def get_splitted_documents(self, docs, **kwargs):
+        pass
+
+    @abstractclassmethod
+    async def get_assistant_response(self, prompt, vector_store, data):
         pass

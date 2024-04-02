@@ -1,22 +1,23 @@
+from dotenv import load_dotenv
+from fastapi import BackgroundTasks
 from features.assistant.application.assistance_service import AssistantService
 from features.assistant.infrastructure.entrypoint.rest.handler.dto.query import QueryResponse, QueryResponseData, QueryResponseError
 from features.assistant.infrastructure.entrypoint.rest.handler.dto.training import TrainingRequest
-from features.assistant.infrastructure.entrypoint.rest.handler.dto.query import QueryRequest
-from shared.helpers.contains import contains
-from shared.url_shortener.url_shortener import short
-
-from fastapi import BackgroundTasks
+from features.assistant.infrastructure.entrypoint.rest.handler.dto.query import QueryRequest, QueryShoppingRequest
+from features.assistant.infrastructure.helpers.get_source import get_response_with_reference
 
 DEFAULT_MESSAGE_ERROR = 'No se pudo obtener una respuesta por parte del asistente'
 DEFAULT_TRAINING_MESSAGE = 'Se ha empezado el entrenamiento del asistente, una vez culminado se notificará vía correo electrónico.'
-ERROR_MESSAGE_FLAG = ['lo siento', 'lamentablemente', '¡Hola!', 'gracias', 'no cuentas con la información', 'no puedo']
 
 class AssistantHandler():
     def __init__(self, service: AssistantService):
         self.service = service
 
+    async def on_startup(self) -> None:
+        print('Aplication started!')
+
     async def train(self, data: TrainingRequest, task: BackgroundTasks):
-        task.add_task(self.service.train)
+        task.add_task(self.service.train, data)
     
         return QueryResponse(
             error=None, 
@@ -24,28 +25,41 @@ class AssistantHandler():
         )
 
     async def query(self, data: QueryRequest, task: BackgroundTasks) -> QueryResponse:
-        if not data.question:
-            return None
-        
-        response = self.service.query(data.question, data.conversation_id, data.platform_source, task)
-        if not response:
+        try:
+            data = data.dict()
+            response = await self.service.query(data, task)
+            answer = get_response_with_reference(response)
+            
             return QueryResponse(
-                error=QueryResponseError(message=DEFAULT_MESSAGE_ERROR), 
-                data=None
+                error=None, 
+                data=QueryResponseData(answer=answer)
             )
+        except Exception as e:
+            return QueryResponse(
+                error=QueryResponseError(
+                    code=500,
+                    message=str(e),
+                ),
+                data=None,
+            )
+    
+    async def shop(self, data: QueryShoppingRequest, task: BackgroundTasks) -> QueryResponse:
+        try:
+            data = data.dict()
+            response = await self.service.shop(data, task)
 
-        source: str = ''
-        answer = response.get('answer')
-        sources = response.get('source_documents')
-
-        if sources:
-            source = sources[0].metadata
-            if source.get('source') and source.get('page') and source.get('url'):
-                if not contains(answer, ERROR_MESSAGE_FLAG):
-                    reference = f"<a href='{short(source.get('url'))}'>{source.get('source')}</a> (Pag. {source.get('page')})"
-                    answer = f"{answer}\n\nFuente: {reference}"
-        
-        return QueryResponse(
-            error=None, 
-            data=QueryResponseData(answer=answer)
-        )
+            return QueryResponse(
+                error=None,
+                data=QueryResponseData(
+                    answer=response.get('answer'),
+                )
+            )
+        except Exception as e:
+            return QueryResponse(
+                error=QueryResponseError(
+                    code=500,
+                    message=str(e),
+                ),
+                data=None,
+            )
+    
